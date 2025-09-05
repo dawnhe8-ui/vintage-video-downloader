@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>去水印下载工具</title>
+  <style>
+    :root{--bg:#2a1810;--panel:#3d2817;--text:#f4f1eb;--muted:#c4a882;--primary:#d4a574;--danger:#c85a54;--ok:#7a9471;--border:#5a4332}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Georgia,"Times New Roman",serif;line-height:1.6;background:linear-gradient(180deg,#2a1810,#3d2817 25%,#2a1810);color:var(--text);background-attachment:fixed}
+    header{padding:32px 16px;text-align:center;border-bottom:3px double var(--border)}
+    header h1{margin:0;font-size:32px;letter-spacing:2px;text-shadow:2px 2px 4px rgba(0,0,0,.5);font-weight:bold}
+    .container{max-width:800px;margin:0 auto;padding:0 16px 48px}
+    .card{background:var(--panel);border:2px solid var(--border);border-radius:8px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.4);margin-bottom:24px}
+    .section{margin-bottom:20px}
+    .section-header{font-size:18px;color:var(--primary);margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:6px;font-weight:bold}
+    label{display:block;margin:8px 0 10px;color:var(--muted);font-weight:500}
+    textarea,input{width:100%;border-radius:6px;border:2px solid var(--border);background:#1a0f08;color:var(--text);padding:14px 16px;font-family:inherit}
+    textarea{min-height:140px;resize:vertical}
+    .btn{appearance:none;border:2px solid var(--primary);border-radius:6px;padding:12px 20px;background:var(--primary);color:#1a0f08;cursor:pointer;font-weight:bold;transition:.2s all ease;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit}
+    .btn.secondary{background:transparent;color:var(--primary);border-color:var(--primary)}
+    .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    .help{color:var(--muted);font-size:13px}
+    .result{margin-top:16px;padding-top:12px;border-top:1px dashed var(--border)}
+    .field{margin:10px 0}
+    .value{word-break:break-all;background:#1a0f08;border:2px inset var(--border);padding:12px 14px;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,\"Liberation Mono\",\"Courier New\",monospace;font-size:14px}
+    .preview{margin-top:10px}
+    img.cover{max-width:100%;border-radius:12px;border:1px solid var(--border)}
+    .badge{display:inline-block;padding:4px 12px;border-radius:4px;background:var(--danger);color:#fff;font-size:12px;margin-left:8px;border:1px solid var(--border)}
+    .status{font-size:14px;color:var(--muted)}
+    .footer{margin-top:32px;text-align:center;color:var(--muted);font-size:14px;border-top:1px solid var(--border);padding-top:20px;font-style:italic}
+
+    /* Password gate */
+    .gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(3,6,17,.85);backdrop-filter:blur(4px);z-index:50}
+    .gate .box{width:min(92vw,420px);background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px}
+    .gate h2{margin:4px 0 10px;font-size:18px}
+    .hidden{display:none!important}
+    .spinner{width:16px;height:16px;border:2px solid #94a3b8;border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin 1s linear infinite;vertical-align:-3px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Vintage Enhancements */
+    .btn:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.4)}
+    .btn.secondary:hover{background:var(--primary);color:#1a0f08}
+    .btn.danger:hover{background:#d66660}
+    textarea:focus,input:focus{outline:3px solid var(--primary);outline-offset:2px;box-shadow:0 0 8px rgba(212,165,116,.3)}
+    .ornament{text-align:center;margin:20px 0;color:var(--border);font-size:20px}
+
+  </style>
+</head>
+<body>
+  <div id="gate" class="gate">
+    <div class="box">
+      <h2>请输入访问密码</h2>
+      <div class="help">本工具仅供学习交流，密码为 123456</div>
+      <div style="margin-top:10px">
+        <input id="pwd" type="password" placeholder="输入密码 123456" />
+      </div>
+
+        <label class="help" style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer">
+          <input id="showPwd" type="checkbox" style="accent-color:#3b82f6" /> 显示密码
+        </label>
+
+      <div class="actions" style="margin-top:12px">
+        <button id="enterBtn" class="btn">进入</button>
+      </div>
+      <div id="gateMsg" class="help" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <header>
+    <h1>去水印下载工具 <span class="badge">Beta</span></h1>
+    <div class="help">粘贴包含分享文案的文本，自动识别链接并解析</div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="section-header">📝 输入分享内容</div>
+      <div class="section">
+        <label for="shareInput">分享文案</label>
+        <textarea id="shareInput" placeholder="在这里粘贴包含 http/https 链接的分享内容...&#10;例如：4.89 03/24 ... https://v.douyin.com/ZOqdo9qsYuY/ 复制此链接..."></textarea>
+        <div class="actions" style="margin-top:14px">
+          <button id="extractBtn" class="btn secondary">🔎 提取链接</button>
+          <button id="parseBtn" class="btn">🚀 开始解析</button>
+          <button id="clearBtn" class="btn danger">🧹 清空</button>
+        </div>
+        <div class="help" style="margin-top:10px">支持任意包含 http 或 https 的文本，自动提取首个链接</div>
+      </div>
+    </div>
+
+    <div class="ornament">❦ ❦ ❦</div>
+
+    <div class="card">
+      <div class="section-header">🔗 识别结果</div>
+      <div class="section">
+        <label>识别出的链接</label>
+        <div id="urlBox" class="value">（尚未识别）</div>
+        <div class="actions" style="margin-top:14px">
+          <button id="copyUrlBtn" class="btn secondary">📋 复制链接</button>
+          <a id="openUrlBtn" class="btn secondary" href="#" target="_blank" rel="noopener">🔗 在新标签打开</a>
+        </div>
+        <div id="status" class="status" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <div id="result" class="card hidden">
+      <div class="section-header">🎬 解析结果</div>
+      <div class="section">
+        <div class="field"><strong>标题：</strong><span id="title"></span></div>
+        <div class="field"><strong>视频地址：</strong><span id="videoUrl" class="value"></span></div>
+        <div class="field"><strong>封面地址：</strong><span id="coverUrl" class="value"></span></div>
+        <div class="actions" style="margin-top:16px">
+          <button id="downloadVideoBtn" class="btn">⬇️ 下载视频</button>
+          <button id="downloadCoverBtn" class="btn secondary">🖼️ 下载封面</button>
+          <button id="copyVideoBtn" class="btn secondary">🔗 复制视频链接</button>
+          <button id="copyCoverBtn" class="btn secondary">🔗 复制封面链接</button>
+        </div>
+        <div class="preview" style="margin-top:16px">
+          <label>封面预览</label>
+          <img id="coverImg" class="cover" alt="封面预览" />
+        </div>
+      </div>
+    </div>
+
+    <div class="ornament">❦ ❦ ❦</div>
+
+    <div class="footer">
+      <div>~ 提示：若浏览器因跨域限制导致无法直接下载，将尝试在新标签打开资源后另存为 ~</div>
+      <div style="margin-top:8px;font-size:12px">复古风格去水印工具 · 仅供学习交流使用</div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://api.guijianpan.com/waterRemoveDetail/xxmQsyByAk?ak=cf8193d79225459ab7b01c56aef27b91&link=';
+    const PASSWORD = '123456';
+
+    const $ = (id)=>document.getElementById(id);
+    const el = {
+      gate: $('gate'), pwd: $('pwd'), showPwd: $('showPwd'), enterBtn: $('enterBtn'), gateMsg: $('gateMsg'),
+      shareInput: $('shareInput'), extractBtn: $('extractBtn'), parseBtn: $('parseBtn'), clearBtn: $('clearBtn'),
+      urlBox: $('urlBox'), copyUrlBtn: $('copyUrlBtn'), openUrlBtn: $('openUrlBtn'), status: $('status'),
+      result: $('result'), title: $('title'), videoUrl: $('videoUrl'), coverUrl: $('coverUrl'), coverImg: $('coverImg'),
+      downloadVideoBtn: $('downloadVideoBtn'), downloadCoverBtn: $('downloadCoverBtn'), copyVideoBtn: $('copyVideoBtn'), copyCoverBtn: $('copyCoverBtn')
+    };
+
+    // Password gate logic
+      if(el.showPwd){ el.showPwd.addEventListener('change', ()=>{ el.pwd.type = el.showPwd.checked ? 'text' : 'password'; }); }
+
+    (function initGate(){
+      try{
+        const ok = sessionStorage.getItem('gate-ok');
+        if(ok==='1'){ el.gate.classList.add('hidden'); return; }
+      }catch(e){}
+      el.enterBtn.addEventListener('click', ()=>{
+        const v = (el.pwd.value||'').trim();
+        if(v===PASSWORD){
+          try{ sessionStorage.setItem('gate-ok','1'); }catch(e){}
+          el.gate.classList.add('hidden');
+          setTimeout(()=>{ try{ el.shareInput && el.shareInput.focus(); }catch(_){} }, 50);
+        }else{
+          el.gateMsg.textContent = '密码错误，请重试';
+        }
+      });
+      el.pwd.addEventListener('keydown', (e)=>{ if(e.key==='Enter') el.enterBtn.click(); });
+    })();
+
+    function setStatus(msg, spinning=false){
+      el.status.innerHTML = spinning ? `<span class="spinner"></span> ${msg}` : msg;
+    }
+
+    function extractFirstUrl(text){
+      if(!text) return null;
+      const regex = /(https?:\/\/[^\s"']+)/i;
+      const m = text.match(regex);
+      if(!m) return null;
+      // trim trailing punctuation that sometimes sticks without whitespace
+      let url = m[1].replace(/[)，)。】】\]\)>]+$/g, '');
+      return url;
+    }
+
+    function showUrl(url){
+      if(url){
+        el.urlBox.textContent = url;
+        el.openUrlBtn.href = url;
+        el.copyUrlBtn.disabled = false;
+      }else{
+        el.urlBox.textContent = '（尚未识别）';
+        el.openUrlBtn.href = '#';
+        el.copyUrlBtn.disabled = true;
+      }
+    }
+
+    function filenameFromUrl(u, fallback){
+      try{
+        const url = new URL(u);
+        const path = url.pathname.split('/').filter(Boolean).pop()||'';
+        const name = path.split('?')[0]||'';
+        if(name) return name;
+      }catch(e){}
+      return fallback||'download';
+    }
+
+    async function downloadByFetch(u, suggestName){
+      try{
+        const resp = await fetch(u, {mode:'cors'});
+        if(!resp.ok) throw new Error('HTTP '+resp.status);
+        const blob = await resp.blob();
+        const a = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        a.href = url;
+        a.download = suggestName || filenameFromUrl(u, 'file');
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 5000);
+        return true;
+      }catch(err){
+        console.warn('downloadByFetch failed:', err);
+        return false;
+      }
+    }
+
+    function fallbackOpen(u){
+      window.open(u, '_blank', 'noopener');
+    }
+
+    async function copyText(t){
+      try{ await navigator.clipboard.writeText(t); return true; }catch(e){
+        // Fallback
+        const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select();
+        try{ document.execCommand('copy'); }catch(_){}
+        ta.remove(); return true;
+      }
+    }
+
+    async function parseLink(link){
+      const url = API_BASE + encodeURIComponent(link);
+      setStatus('正在解析，请稍候...', true);
+      try{
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if(!resp.ok || !data || data.code!=='10000' || !data.content || data.content.success!==true){
+          throw new Error(data && data.msg ? data.msg : '解析失败');
+        }
+        const { title, url:video, cover } = data.content;
+        el.title.textContent = title || '(无标题)';
+        el.videoUrl.textContent = video || '';
+        el.coverUrl.textContent = cover || '';
+        el.coverImg.src = cover || '';
+        el.result.classList.remove('hidden');
+        setStatus('解析成功');
+      }catch(e){
+        console.error(e);
+        setStatus('解析失败：' + (e.message || '未知错误'));
+      }
+    }
+
+    // Bindings
+    el.extractBtn.addEventListener('click', ()=>{
+      const url = extractFirstUrl(el.shareInput.value);
+      showUrl(url);
+      setStatus(url? '已识别链接' : '未识别到 http/https 链接');
+    });
+
+    el.parseBtn.addEventListener('click', ()=>{
+      let url = el.urlBox.textContent && el.urlBox.textContent.startsWith('http') ? el.urlBox.textContent : null;
+      if(!url){ url = extractFirstUrl(el.shareInput.value); showUrl(url); }
+      if(!url){ setStatus('请先粘贴分享内容并提取到链接'); return; }
+      parseLink(url);
+    });
+
+    el.clearBtn.addEventListener('click', ()=>{
+      el.shareInput.value=''; showUrl(null); el.result.classList.add('hidden'); setStatus('');
+    });
+
+    el.copyUrlBtn.addEventListener('click', async()=>{
+      const u = el.urlBox.textContent; if(!u||!u.startsWith('http')) return;
+      await copyText(u); setStatus('已复制链接');
+    });
+
+    el.downloadVideoBtn.addEventListener('click', async()=>{
+      const u = el.videoUrl.textContent; if(!u) return;
+      const ok = await downloadByFetch(u, filenameFromUrl(u,'video.mp4'));
+      if(!ok){ setStatus('直接下载受限，已在新标签打开'); fallbackOpen(u); }
+    });
+
+    el.downloadCoverBtn.addEventListener('click', async()=>{
+      const u = el.coverUrl.textContent; if(!u) return;
+      const ok = await downloadByFetch(u, filenameFromUrl(u,'cover.jpg'));
+      if(!ok){ setStatus('直接下载受限，已在新标签打开'); fallbackOpen(u); }
+    });
+
+    el.copyVideoBtn.addEventListener('click', async()=>{
+      const u = el.videoUrl.textContent; if(!u) return; await copyText(u); setStatus('已复制视频链接');
+    });
+    el.copyCoverBtn.addEventListener('click', async()=>{
+      const u = el.coverUrl.textContent; if(!u) return; await copyText(u); setStatus('已复制封面链接');
+    });
+
+    // Prefill example
+    const example = '4.89 03/24 cNJ:/ K@W.md 随意“搭讪”韩国美女，印度富人区的三哥能有多自信？ # 外国人 # 歪果仁真会玩 # 印度 # 旅行 # 看世界  https://v.douyin.com/ZOqdo9qsYuY/ 复制此链接，打开Dou音搜索，直接观看视频！';
+    el.shareInput.placeholder = example;
+  </script>
+</body>
+</html>
+
